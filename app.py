@@ -2,8 +2,10 @@ from flask import Flask, render_template
 from sendMail import mail
 from api import api
 from os import getenv
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+CORS(app)
 app.config.update(
     MAIL_SERVER="smtp.gmail.com",
     MAIL_PORT=465,

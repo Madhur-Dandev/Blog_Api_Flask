@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from jwt import encode, decode, ExpiredSignatureError, InvalidTokenError
 from werkzeug.security import generate_password_hash, check_password_hash
 from classes import GetUserByUser, GetUserByEmail
+from middleware import check_token
 import re
 
 load_dotenv()
@@ -144,3 +145,32 @@ def login():
     except (Exception) as e:
         print(e)
         return res(jsonify({"message": "Servor Error"}), 500)
+
+
+@auth.get('/logout/<string:token>')
+@check_token
+def logout(token, msg):
+    print(msg)
+    try:
+        if msg.get("loggedin"):
+            with db.connect() as conn:
+                updateRes = conn.execute(text(f'''UPDATE blog_users SET token = "" WHERE id = "{msg.get("id")}"''')).rowcount
+                insertRes = conn.execute(text(f'''INSERT INTO blog_blacklisted_tokens (token) VALUES ("{msg.get("token")}")'''))
+
+                if updateRes and insertRes:
+                    resp = res(jsonify({"message": "Logout Successfully", "loggedout": True}), 200)
+                    resp.delete_cookie("refresh_token", secure=True, httponly=True)
+                    return resp
+                else:
+                    reUpdateRes = conn.execute(text(f'''UPDATE blog_users SET token = "{msg.get("token")}" WHERE id = "{msg.get('id')}"''')).rowcount
+                    if reUpdateRes:
+                        raise UserDefined("Server Error")
+        else:
+            return res(jsonify({"message": "Unauthorized"}), 401)
+
+    except Exception as e:
+        print(e)
+        print(e.args[0])
+        return res(jsonify({"message": "Server Error"}))
+    # return msg
+    

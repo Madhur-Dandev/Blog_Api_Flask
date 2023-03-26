@@ -26,13 +26,18 @@ class GetUser:
                 if check_password_hash(exist_user.get("user_password"), self.__userPassword):
                     access_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY"))
                     refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY"))
-                    resp = res({
-                        "login": True,
-                        "username": exist_user.get("username"),
-                        "token": access_token
-                    })
-                    resp.set_cookie("refresh_token", refresh_token, secure=True, httponly=True, max_age=(3600 * 24 * 30))
-                    return resp
+                    with db.connect() as conn:
+                        token_update_result = conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = {exist_user.get("id")}''')).rowcount
+                        if token_update_result:
+                            resp = res({
+                                "login": True,
+                                "username": exist_user.get("username"),
+                                "token": access_token
+                            })
+                            resp.set_cookie("refresh_token", refresh_token, secure=True, httponly=True, max_age=(3600 * 24 * 30))
+                            return resp
+                        else:
+                            raise Exception("Can't update user token in database.")
                 else:
                     raise UserDefined({"message": "Password is incorrect!"})
             else:
