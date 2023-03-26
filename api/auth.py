@@ -9,15 +9,22 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from jwt import encode, decode, ExpiredSignatureError, InvalidTokenError
 from werkzeug.security import generate_password_hash, check_password_hash
+from classes import GetUserByUser, GetUserByEmail
 import re
 
 load_dotenv()
 
 auth = Blueprint("auth", __name__, url_prefix="/auth")
 
-@auth.get("/login")
-def login():
-    return jsonify({"Message": "This is login api"}), 200
+def loginUser(data_dict):
+    resp = res({
+        "login": True,
+        "username": data_dict.get("username"),
+        "token": data_dict.get("access_token")
+    })
+    resp.set_cookie("refresh_token", data_dict.get("refresh_token"), secure=True, httponly=True, max_age=(datetime.utcnow() + timedelta(days=30)))
+    return resp
+
 
 @auth.post("signup")
 def signup():
@@ -44,7 +51,9 @@ def signup():
                             else:
                                 # result = conn.execute(text(f'''INSERT INTO blog_users (user_name, user_email, user_password) VALUES ("{userName}", "{userEmail}", "{generate_password_hash(userPassword)}")''')).rowcount
                                 # if result:
-                                token = encode({"data": {"email": userEmail, "name": userName, "pass": generate_password_hash(userPassword)}, "exp": datetime.utcnow() + timedelta(minutes=3) }, getenv("SECRET_KEY")).decode("utf-8")
+                                token = encode({"data": {"email": userEmail, "name": userName, "pass": generate_password_hash(userPassword)}, "exp": datetime.utcnow() + timedelta(minutes=3) }, getenv("SECRET_KEY"))
+                                # print(decode(token, verify=False, algorithms=["HS256"]).decode('utf-8'))
+                                # print(token)
                                 send_mail(
                                     "Blogger Email Verification",
                                     getenv("EMAIL"),
@@ -74,6 +83,7 @@ def signup():
         if isinstance(e, UserDefined):
             # return jsonify({"Message": e.args[0]})
             print(e.args[0])
+            print(e.__traceback__)
             return jsonify(e.args[0]), 400
         
         print(e)
@@ -85,7 +95,7 @@ def verify():
     try:
         token = req.args.get("token")
         if token:
-            data = decode(token, getenv("SECRET_KEY"))
+            data = decode(token, getenv("SECRET_KEY"), algorithms=["HS256"])
             with db.connect() as conn:
                 verifyUser = conn.execute(text(f'''INSERT INTO blog_users (user_name, user_email, user_password, verified) VALUES ("{data.get("data").get("name")}", "{data.get("data").get("email")}", "{data.get("data").get("pass")}", TRUE)''')).rowcount
                 print(verifyUser)
@@ -99,8 +109,38 @@ def verify():
             return jsonify(e.args[0]), 400
         
         if isinstance(e, InvalidTokenError) or isinstance(e, ExpiredSignatureError):
+            print(e)
             return jsonify({"message": "Invalid Token"}), 401
     
         print(e)
         
         return jsonify({"message": "Server Error"}), 500
+    
+
+@auth.post("/login")
+def login():
+    try:
+        if req.is_json:
+            userEmail = req.json.get("useremail")
+            userName = req.json.get("username")
+            userPassword = req.json.get("userpassword")
+            if userPassword:
+                if userEmail:
+                    user = GetUserByEmail(userEmail, userPassword)
+                    resp = user.getUserDetail()
+                    return resp
+                elif userName:
+                    user = GetUserByUser(userName, userPassword)
+                    resp = user.getUserDetail()
+                    return resp
+                else:
+                    raise UserDefined({"message": "User Email or Username must be provided."})
+            else:
+                raise UserDefined({"message": "Password must be provided."})
+        else:
+            raise UserDefined({"message": "Data must be provided in json format."})
+            
+
+    except (Exception) as e:
+        print(e)
+        return res(jsonify({"message": "Servor Error"}), 500)

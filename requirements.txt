@@ -4,4 +4,4 @@ flask-jwt
 python-dotenv
 sqlalchemy
 pymysql
-
+jwt

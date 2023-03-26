@@ -10,9 +10,16 @@ CREATE TABLE
         PRIMARY KEY (id)
     );
 
+-- CREATE TABLE
+--     blog_unverified_users(
+--         id INT AUTO_INCREMENT,
+--         user_email VARCHAR(255) NOT NULL,
+--         PRIMARY KEY (id)
+--     )
+
 CREATE TABLE
-    blog_unverified_users(
-        id INT AUTO_INCREMENT,
-        user_email VARCHAR(255) NOT NULL,
+    blog_blacklisted_tokens(
+        id int AUTO_INCREMENT,
+        token VARCHAR(255) NOT NULL,
         PRIMARY KEY (id)
     )
