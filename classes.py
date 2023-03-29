@@ -24,8 +24,8 @@ class GetUser:
         try:
             if exist_user:
                 if check_password_hash(exist_user.get("user_password"), self.__userPassword):
-                    access_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY"))
-                    refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY"))
+                    access_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
+                    refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY")).decode("utf-8")
                     with db.connect() as conn:
                         token_update_result = conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = {exist_user.get("id")}''')).rowcount
                         if token_update_result:

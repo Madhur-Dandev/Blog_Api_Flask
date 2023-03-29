@@ -52,9 +52,10 @@ def signup():
                             else:
                                 # result = conn.execute(text(f'''INSERT INTO blog_users (user_name, user_email, user_password) VALUES ("{userName}", "{userEmail}", "{generate_password_hash(userPassword)}")''')).rowcount
                                 # if result:
-                                token = encode({"data": {"email": userEmail, "name": userName, "pass": generate_password_hash(userPassword)}, "exp": datetime.utcnow() + timedelta(minutes=3) }, getenv("SECRET_KEY"))
+                                token = encode({"data": {"email": userEmail, "name": userName, "pass": generate_password_hash(userPassword)}, "exp": datetime.utcnow() + timedelta(minutes=5) }, getenv("SECRET_KEY")).decode("utf-8")
                                 # print(decode(token, verify=False, algorithms=["HS256"]).decode('utf-8'))
                                 # print(token)
+                                print(token)
                                 send_mail(
                                     "Blogger Email Verification",
                                     getenv("EMAIL"),
@@ -143,6 +144,11 @@ def login():
             
 
     except (Exception) as e:
+        if isinstance(e, UserDefined):
+            # return jsonify({"Message": e.args[0]})
+            print(e.args[0])
+            print(e.__traceback__)
+            return jsonify(e.args[0]), 400
         print(e)
         return res(jsonify({"message": "Servor Error"}), 500)
 
