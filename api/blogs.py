@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request as req, make_response as res, send_from_directory
+from .comments import comments
 from database import db
 from sqlalchemy import text, exc
 from exception import UserDefined
@@ -13,6 +14,7 @@ from shutil import rmtree, move
 load_dotenv()
 
 blogs = Blueprint("blogs", __name__, url_prefix="/blogs")
+blogs.register_blueprint(comments)
 
 def genFolderName():
     return "".join([choice(f"{ascii_lowercase}{ascii_uppercase}{digits}") for i in range(8)])    
@@ -227,8 +229,7 @@ def upadateBlog(token, resp, blog_id):
                                     except (IOError, OSError) as e:
                                         print(e)
                                         print(e.args[0])
-                                        return res(jsonify({"message": "Server Error"}), 500)
-                                    
+                                        return res(jsonify({"message": "Server Error"}), 500)                                    
                                     
                                     query_str = f'''UPDATE new_blogs SET blog_title = {blog_exists.get("blog_title") if blog_exists.get("blog_title") else title}, blog_description =  {blog_exists.get("blog_description") if blog_exists.get("blog_description") else description}, blog_image = {blog_img_str},'''
                                 else:
