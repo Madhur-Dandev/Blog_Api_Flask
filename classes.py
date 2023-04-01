@@ -30,19 +30,20 @@ class GetUser:
                         token_update_result = conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = {exist_user.get("id")}''')).rowcount
                         if token_update_result:
                             resp = res({
-                                "login": True,
-                                "username": exist_user.get("username"),
+                                # "login": True,
+                                "message": "Login Successfully!",
+                                "userName": exist_user.get("user_name"),
                                 "token": access_token
                             })
-                            resp.set_cookie("refresh_token", refresh_token, secure=True, httponly=True, max_age=(3600 * 24 * 30))
+                            resp.set_cookie("refresh_token", value=refresh_token, secure=True, httponly=True, samesite=None, max_age=(3600 * 24 * 30))
                             return resp
                         else:
-                            raise Exception("Can't update user token in database.")
+                            raise Exception({"message": "Can't update user token in database."})
                 else:
-                    raise UserDefined({"message": "Password is incorrect!"})
+                    raise UserDefined({"message": "Password is incorrect!", "incorrect": "password"})
             else:
-                raise UserDefined({"message": "Email or Username is incorrect!"})
-        except (UserDefined, Exception) as e:
+                raise UserDefined({"message": "Email or Username is incorrect!", "incorrect": "useremail"})
+        except (Exception) as e:
             if isinstance(e, UserDefined):
                 print(e)
                 return res(jsonify(e.args[0]), 400)

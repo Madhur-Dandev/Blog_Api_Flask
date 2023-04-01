@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request as req, make_response as res, render_template as render
+from flask import Blueprint, jsonify, request as req, make_response as res, redirect
 from database import db
 from sqlalchemy import text
 from exception import UserDefined
@@ -102,7 +102,7 @@ def verify():
                 verifyUser = conn.execute(text(f'''INSERT INTO blog_users (user_name, user_email, user_password, verified) VALUES ("{data.get("data").get("name")}", "{data.get("data").get("email")}", "{data.get("data").get("pass")}", TRUE)''')).rowcount
                 print(verifyUser)
                 if verifyUser:
-                    return render("verified.html")
+                    return redirect("http://localhost:5173/verified")
 
         
         raise UserDefined({"message": "Token is required"})
@@ -121,6 +121,7 @@ def verify():
 
 @auth.post("/login")
 def login():
+    print(req.cookies)
     try:
         if req.is_json:
             userEmail = req.json.get("useremail")
@@ -161,11 +162,11 @@ def logout(token, msg):
         if msg.get("loggedin"):
             with db.connect() as conn:
                 updateRes = conn.execute(text(f'''UPDATE blog_users SET token = "" WHERE id = "{msg.get("id")}"''')).rowcount
-                insertRes = conn.execute(text(f'''INSERT INTO blog_blacklisted_tokens (token) VALUES ("{msg.get("token")}")'''))
+                insertRes = conn.execute(text(f'''INSERT INTO blacklisted_tokens (token) VALUES ("{msg.get("token")}")'''))
 
                 if updateRes and insertRes:
                     resp = res(jsonify({"message": "Logout Successfully", "loggedout": True}), 200)
-                    resp.delete_cookie("refresh_token", secure=True, httponly=True)
+                    resp.delete_cookie("refresh_token", httponly=True, secure=True, samesite=None)
                     return resp
                 else:
                     reUpdateRes = conn.execute(text(f'''UPDATE blog_users SET token = "{msg.get("token")}" WHERE id = "{msg.get('id')}"''')).rowcount
@@ -178,5 +179,11 @@ def logout(token, msg):
         print(e)
         print(e.args[0])
         return res(jsonify({"message": "Server Error"}))
-    # return msg
+    
+
+@auth.get("/temp")
+def temp():
+    token = req.cookies.get("refresh_token")
+    print(token)
+    return res(jsonify({"message": "hi"}))
     
