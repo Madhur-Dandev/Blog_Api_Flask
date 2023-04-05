@@ -1,6 +1,6 @@
 from database import db
 from flask import make_response as res, jsonify, request as req
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 from jwt import encode
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -20,29 +20,36 @@ class GetUser:
     def userData(self):
         return self.__userData
     
-    def getUserDetail(self, exist_user):
+    def getUserDetail(self, type=""):
         try:
-            if exist_user:
-                if check_password_hash(exist_user.get("user_password"), self.__userPassword):
-                    access_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
-                    refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY")).decode("utf-8")
-                    with db.connect() as conn:
-                        token_update_result = conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = {exist_user.get("id")}''')).rowcount
-                        if token_update_result:
-                            resp = res({
-                                # "login": True,
+            query = "SELECT id, user_name, user_password, token FROM blog_users WHERE"
+            if type == "email":
+                query += f''' user_email = "{self.__userData}"'''
+            else:
+                query += f''' user_name = "{self.__userData}"'''
+
+            with db.connect() as conn:
+                exist_user = conn.execute(text(query)).mappings().first()
+                if exist_user:
+                    if check_password_hash(exist_user.get("user_password"), self.__userPassword):
+                        refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY")).decode("utf-8")
+                        access_token = exist_user.get("token") if exist_user.get("token") else encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
+
+                        if exist_user.get("id"):
+                            conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = {exist_user.get("id")}'''))
+
+                        resp = res({
                                 "message": "Login Successfully!",
                                 "userName": exist_user.get("user_name"),
                                 "token": access_token
                             })
-                            resp.set_cookie("refresh_token", value=refresh_token, secure=True, httponly=True, samesite=None, max_age=(3600 * 24 * 30))
-                            return resp
-                        else:
-                            raise Exception({"message": "Can't update user token in database."})
+                        resp.set_cookie("refresh_token", value=refresh_token, secure=True, httponly=True, samesite=None, max_age=(3600 * 24 * 30))
+                        return resp
+                    else:
+                        raise UserDefined({"message": "Password is incorrect!", "incorrect": "password"})
                 else:
-                    raise UserDefined({"message": "Password is incorrect!", "incorrect": "password"})
-            else:
-                raise UserDefined({"message": "Email or Username is incorrect!", "incorrect": "useremail"})
+                    raise UserDefined({"message": "Email or Username is incorrect!", "incorrect": "useremail"})
+                
         except (Exception) as e:
             if isinstance(e, UserDefined):
                 print(e)
@@ -51,38 +58,19 @@ class GetUser:
             print(e)
             return res(jsonify({"message": "Server Error"}), 500)
 
-
-           
-
 class GetUserByEmail(GetUser):
     def __init__(self, userData: str, userPassword: str):
         super().__init__(userData, userPassword)
         
     def getUserDetail(self):
-        try:
-            with db.connect() as conn:
-                exist_user = conn.execute(text(f'''select id, user_name, user_password from blog_users where user_email ="{self.userData}"''')).mappings().first()
-                return super().getUserDetail(exist_user)
-        except (UserDefined, Exception) as e:
-            if isinstance(e, UserDefined):
-                return res(jsonify(e.args[0]), 400)
-            print(e)
-            return res(jsonify({"message": "Server Error"}), 500)
+        return super().getUserDetail(type="email")
 
 class GetUserByUser(GetUser):
     def __init__(self, userData: str, userPassword: str):
         super().__init__(userData, userPassword)
         
     def getUserDetail(self):
-        try:
-            with db.connect() as conn:
-                exist_user = conn.execute(text(f'''select id, user_name, user_password from blog_users where user_name ="{self.userData}"''')).mappings().first()
-                return super().getUserDetail(exist_user)
-        except (UserDefined, Exception) as e:
-            if isinstance(e, UserDefined):
-                return res(jsonify(e.args[0]), 400)
-            print(e)
-            return res(jsonify({"message": "Server Error"}), 500)
+        return super().getUserDetail(type="name")
         
 
 class Comment:
@@ -178,6 +166,4 @@ class Comment:
                 return res(jsonify(e.args[0]), 400)
             
             print(e)
-            return res(jsonify({"message": "Server Error"}), 500)
-        
-            
+            return res(jsonify({"message": "Server Error"}), 500)         

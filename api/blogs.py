@@ -22,7 +22,20 @@ def genFolderName():
 @blogs.get("/")
 @blogs.get("/<sort>")
 def index():
-    return "Index of all blogs in Flask_Blog_Api"
+    try:
+        with db.connect() as conn:
+            result = conn.execute(text(f"SELECT new_blogs.id, new_blogs.blog_title, new_blogs.blog_image, new_blogs.date_created, blog_users.id AS user_id, blog_users.user_name FROM new_blogs JOIN blog_users ON new_blogs.user_id = blog_users.id LIMIT 3")).mappings().all()
+            # result = conn.execute(text(f"SELECT * FROM blog_comments")).mappings().all()
+            if result:
+                blogs = []
+                for blog in result:
+                    blogs.append(dict(blog))
+                return res(jsonify(blogs), 200)
+            
+            return res(jsonify(result), 200)
+    except (Exception) as e:
+        print(e)
+        return res(jsonify({"message": "Server Error"}), 500)
 
 
 @blogs.post("/create/<string:token>")
@@ -204,7 +217,7 @@ def delete(token, resp, id):
 @check_token
 def upadateBlog(token, resp, blog_id):
     if resp.get("loggedin"):
-        if req.form:
+        if req.form or req.files:
             try:
                 with db.connect() as conn:
                     blog_exists = conn.execute(text(f'''SELECT * FROM new_blogs WHERE id = {blog_id}''')).mappings().first()
@@ -231,10 +244,12 @@ def upadateBlog(token, resp, blog_id):
                                         print(e.args[0])
                                         return res(jsonify({"message": "Server Error"}), 500)                                    
                                     
-                                    query_str = f'''UPDATE new_blogs SET blog_title = {blog_exists.get("blog_title") if blog_exists.get("blog_title") else title}, blog_description =  {blog_exists.get("blog_description") if blog_exists.get("blog_description") else description}, blog_image = {blog_img_str},'''
+                                    query_str = f'''UPDATE new_blogs SET blog_image = "{blog_img_str}" WHERE id = {blog_id} AND user_id = {resp.get("id")}'''
+                                    # query_str = f'''UPDATE new_blogs SET blog_title = {blog_exists.get("blog_title") if blog_exists.get("blog_title") else title}, blog_description =  {blog_exists.get("blog_description") if blog_exists.get("blog_description") else description}, blog_image = {blog_img_str},'''
                                 else:
                                     raise UserDefined({"message": "Uploaded file must be image."})
-                            query_str = f'''UPDATE new_blogs SET blog_title = "{blog_exists.get("blog_title") if blog_exists.get("blog_title") == title else title}", blog_description =  "{blog_exists.get("blog_description") if blog_exists.get("blog_description") == description else description}", blog_image = "{blog_exists.get("blog_image") if blog_img_str == "" else blog_img_str}" WHERE id = {blog_id} AND user_id = {resp.get("id")}'''
+                            if title or description:
+                                query_str = f'''UPDATE new_blogs SET blog_title = "{blog_exists.get("blog_title") if blog_exists.get("blog_title") == title or not title else title}", blog_description =  "{blog_exists.get("blog_description") if blog_exists.get("blog_description") == description or not description else description}", blog_image = "{blog_exists.get("blog_image") if blog_img_str == "" else blog_img_str}" WHERE id = {blog_id} AND user_id = {resp.get("id")}'''
 
                             update_resp = conn.execute(text(query_str)).rowcount
 
@@ -248,7 +263,7 @@ def upadateBlog(token, resp, blog_id):
                             return res(jsonify({"message": "Not allowed!"}), 401)
                     else:
                         raise UserDefined({"message": "Blog does not exists!"})
-            except (Exception, exc.SQLAlchemyError) as e:
+            except (Exception, exc.SQLAlchemyError, exc.DatabaseError) as e:
                 if isinstance(e, UserDefined):
                     print(e.args[0])
                     return res(jsonify(e.args[0]), 400)
