@@ -52,9 +52,11 @@ def signup():
                             else:
                                 # result = conn.execute(text(f'''INSERT INTO blog_users (user_name, user_email, user_password) VALUES ("{userName}", "{userEmail}", "{generate_password_hash(userPassword)}")''')).rowcount
                                 # if result:
-                                token = encode({"data": {"email": userEmail, "name": userName, "pass": generate_password_hash(userPassword)}, "exp": datetime.utcnow() + timedelta(minutes=5) }, getenv("SECRET_KEY")).decode("utf-8")
-                                # print(decode(token, verify=False, algorithms=["HS256"]).decode('utf-8'))
-                                # print(token)
+
+                                # Below methods only works on some operating system where decode it done manually
+                                # token = encode({"data": {"email": userEmail, "name": userName, "pass": generate_password_hash(userPassword)}, "exp": datetime.utcnow() + timedelta(minutes=5) }, getenv("SECRET_KEY")).decode("utf-8")
+                                
+                                token = encode({"data": {"email": userEmail, "name": userName, "pass": generate_password_hash(userPassword)}, "exp": datetime.utcnow() + timedelta(minutes=5) }, getenv("SECRET_KEY"), algorithm="HS256")
                                 print(token)
                                 send_mail(
                                     "Blogger Email Verification",
@@ -121,7 +123,6 @@ def verify():
 
 @auth.post("/login")
 def login():
-    print(req.cookies)
     try:
         if req.is_json:
             userEmail = req.json.get("useremail")

@@ -9,7 +9,7 @@ from middleware import check_token
 from string import ascii_lowercase, ascii_uppercase, digits
 from random import choice
 from os import path, mkdir
-from shutil import rmtree, move
+from shutil import rmtree
 
 load_dotenv()
 
@@ -41,6 +41,8 @@ def index():
 @blogs.post("/create/<string:token>")
 @check_token
 def create(token, resp):
+    print(req.form)
+    print(req.files)
     try:
         print(resp)
         if resp.get('loggedin'):
@@ -64,8 +66,8 @@ def create(token, resp):
                     with db.connect() as conn:
                         result = conn.execute(text(f'''INSERT INTO new_blogs (blog_title, blog_description, blog_image, user_id) VALUES ("{title}", "{description}", "{blog_img_str}", {resp.get("id")})''')).rowcount
 
-                        if result:
-                            return jsonify({"message": "Blog created successfully!"})
+                        if result:    
+                            return jsonify({"message": "Blog created successfully!", "access_token": resp.get("token")})
                         else:
                             raise UserDefined({"message": "Can't process your request now. Try again later."})
                 else:
@@ -282,3 +284,11 @@ def blog_img(folderName, fileName):
     except (FileNotFoundError, FileExistsError, OSError) as e:
         print(e)
         return res(jsonify({"message": "File Does not Exist!"}))
+    
+    
+@blogs.post("/temp/<string:token>")
+def temp(token):
+    print(token)
+    print(req.files)
+    print(req.form)
+    return res(jsonify({"message": "Hi"}), 200)

@@ -31,7 +31,10 @@ def check_token(func):
                 refresh_token = req.cookies.get("refresh_token")
                 id = decode(refresh_token, getenv("SECRET_KEY"), algorithms=["HS256"]).get('id')
                 if id:
-                    access_token = encode({"id": id, "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
+
+                    # Below methods only works on some operating system where decode it done manually
+                    # access_token = encode({"id": id, "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
+                    access_token = encode({"id": id, "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY"), algorithm="HS256")
                     print(access_token)
                     decodeResp = decode(access_token, getenv("SECRET_KEY"), algorithms=["HS256"])
                     if decodeResp:

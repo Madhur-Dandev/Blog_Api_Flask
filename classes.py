@@ -32,8 +32,10 @@ class GetUser:
                 exist_user = conn.execute(text(query)).mappings().first()
                 if exist_user:
                     if check_password_hash(exist_user.get("user_password"), self.__userPassword):
-                        refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY")).decode("utf-8")
-                        access_token = exist_user.get("token") if exist_user.get("token") else encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
+                        # refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY")).decode("utf-8")
+                        # access_token = exist_user.get("token") if exist_user.get("token") else encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
+                        refresh_token = encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(days=30)}, getenv("SECRET_KEY"), algorithm="HS256")
+                        access_token = exist_user.get("token") if exist_user.get("token") else encode({"id": exist_user.get("id"), "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY"), algorithm="HS256")
 
                         if exist_user.get("id"):
                             conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = {exist_user.get("id")}'''))
