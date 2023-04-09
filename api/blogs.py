@@ -24,7 +24,7 @@ def genFolderName():
 def index():
     try:
         with db.connect() as conn:
-            result = conn.execute(text(f"SELECT new_blogs.id, new_blogs.blog_title, new_blogs.blog_image, new_blogs.date_created, blog_users.id AS user_id, blog_users.user_name FROM new_blogs JOIN blog_users ON new_blogs.user_id = blog_users.id LIMIT 3")).mappings().all()
+            result = conn.execute(text(f"SELECT new_blogs.id, new_blogs.blog_title, new_blogs.blog_image, new_blogs.date_created, blog_users.id AS user_id, blog_users.user_name FROM new_blogs JOIN blog_users ON new_blogs.user_id = blog_users.id ORDER BY new_blogs.id DESC LIMIT 3")).mappings().all()
             # result = conn.execute(text(f"SELECT * FROM blog_comments")).mappings().all()
             if result:
                 blogs = []
@@ -34,6 +34,28 @@ def index():
             
             return res(jsonify(result), 200)
     except (Exception) as e:
+        print(e)
+        return res(jsonify({"message": "Server Error"}), 500)
+    
+    
+@blogs.get("/getblog/<int:blog_id>")
+def get_blog(blog_id):
+    try:
+        with db.connect() as conn:
+            # details = conn.execute(text(f'''SELECT new_blogs.id, new_blogs.blog_title, new_blogs.blog_description, new_blogs.blog_image, new_blogs.likes, new_blogs.dislikes, new_blogs.date_created, blog_users.user_name, blog_users.id AS user_id, blog_comments.comment_body, bu.id AS comment_user_id, bu.user_name AS comment_user_name FROM new_blogs LEFT JOIN blog_users ON new_blogs.user_id = blog_users.id LEFT JOIN blog_comments ON new_blogs.id = blog_comments.blog_id LEFT JOIN blog_users AS bu ON blog_comments.user_id = bu.id WHERE new_blogs.id = {blog_id}''')).mappings().all()
+
+            
+            # all_results = []
+
+            # for item in details:
+            #     all_results.append(dict(item))
+            
+            # return res(all_results, 200)
+            
+            result = conn.execute(text(f'''SELECT new_blogs.*, blog_users.user_name FROM new_blogs LEFT JOIN blog_users ON new_blogs.user_id = blog_users.id WHERE new_blogs.id = {blog_id}''')).mappings().first()
+            return res(dict(result), 200)
+            
+    except (Exception, exc.SQLAlchemyError) as e:
         print(e)
         return res(jsonify({"message": "Server Error"}), 500)
 
@@ -64,7 +86,7 @@ def create(token, resp):
             if len(title) <= 500:
                 if len(description) <= 2000:
                     with db.connect() as conn:
-                        result = conn.execute(text(f'''INSERT INTO new_blogs (blog_title, blog_description, blog_image, user_id) VALUES ("{title}", "{description}", "{blog_img_str}", {resp.get("id")})''')).rowcount
+                        result = conn.execute(text(f'''INSERT INTO new_blogs (blog_title, blog_description, blog_image, user_id) VALUES ("{title}", "{description}", \"{blog_img_str}\", {resp.get("id")})''')).rowcount
 
                         if result:    
                             return jsonify({"message": "Blog created successfully!", "access_token": resp.get("token")})
@@ -292,3 +314,7 @@ def temp(token):
     print(req.files)
     print(req.form)
     return res(jsonify({"message": "Hi"}), 200)
+
+
+# SQL Query : 
+# SELECT new_blogs.*, blog_users.user_name, blog_users.id AS user_id, blog_comments.comment_body, bu.id, bu.user_name FROM new_blogs LEFT JOIN blog_users ON new_blogs.user_id = blog_users.id LEFT JOIN blog_comments ON new_blogs.id = blog_comments.blog_id LEFT JOIN blog_users AS bu ON blog_comments.user_id = bu.id WHERE new_blogs.id = 1;

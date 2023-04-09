@@ -1,8 +1,28 @@
 from flask import Blueprint, jsonify, request as req, make_response as res
 from middleware import check_token
 from classes import Comment
+from database import db
+from sqlalchemy import text, exc
 
 comments = Blueprint("comments", __name__, url_prefix="/comment")    
+
+@comments.get("/<int:blog_id>")
+def getComments(blog_id):
+    try:
+        with db.connect() as conn:
+            
+            results = conn.execute(text(f'''SELECT blog_comments.id, blog_comments.comment_body, blog_comments.user_id, blog_users.user_name FROM blog_comments LEFT JOIN blog_users ON blog_comments.user_id = blog_users.id WHERE blog_comments.blog_id = {blog_id}''')).mappings().all()
+
+            all_results = []
+
+            for comment in results:
+                all_results.append(dict(comment))
+
+            return res(all_results, 200)
+            
+    except (Exception, exc.SQLAlchemyError) as e:
+        print(e)
+        return res(jsonify({"message": "Server Error"}), 500)
 
 @comments.post('/create/<string:token>/<int:blog_id>/')
 @check_token
