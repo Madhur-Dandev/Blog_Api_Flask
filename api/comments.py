@@ -23,6 +23,24 @@ def getComments(blog_id):
     except (Exception, exc.SQLAlchemyError) as e:
         print(e)
         return res(jsonify({"message": "Server Error"}), 500)
+    
+@comments.get("/replies/<int:comment_id>")
+def getReplies(comment_id):
+    try:
+        with db.connect() as conn:
+            
+            results = conn.execute(text(f'''SELECT blog_comment_replies.id, blog_comment_replies.reply_body, blog_comment_replies.user_id, blog_users.user_name FROM blog_comment_replies LEFT JOIN blog_users ON blog_comment_replies.user_id = blog_users.id WHERE blog_comment_replies.comment_id = {comment_id}''')).mappings().all()
+
+            all_results = []
+
+            for comment in results:
+                all_results.append(dict(comment))
+
+            return res(all_results, 200)
+            
+    except (Exception, exc.SQLAlchemyError) as e:
+        print(e)
+        return res(jsonify({"message": "Server Error"}), 500)
 
 @comments.post('/create/<string:token>/<int:blog_id>/')
 @check_token
