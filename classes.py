@@ -133,8 +133,10 @@ class Comment:
                                     if what == "comment" or what == "blog":
                                         if action == "insert":
                                             conn.execute(text(f'''INSERT INTO blog_comments (blog_id, user_id, comment_body) VALUES ({self.__blog_id}, {self.__resp.get("id")}, "{body}")'''))
+                                            inserted_comment = conn.execute(text('''SELECT blog_comments.id, blog_comments.comment_body, blog_comments.user_id, blog_users.user_name FROM blog_comments LEFT JOIN blog_users ON blog_comments.user_id = blog_users.id WHERE blog_comments.id = LAST_INSERT_ID()''')).mappings().first()
+                                            print(inserted_comment)
                                             
-                                            return res(jsonify({"message": "Comment Added", "access_token": self.__resp.get("token")}), 201)
+                                            return res(jsonify({"message": "Comment Added", "access_token": self.__resp.get("token"), "comment": dict(inserted_comment)}), 201)
 
                                         if action == "update":
                                             conn.execute(text(f'''UPDATE blog_comments SET comment_body = "{body}" WHERE id = {self.__comment_id}'''))
@@ -144,8 +146,9 @@ class Comment:
                                     if what == "reply" or what == "check_comment":
                                         if action == "insert":
                                             conn.execute(text(f'''INSERT INTO blog_comment_replies (blog_id, user_id, comment_id, reply_body) VALUES ({self.__blog_id}, {self.__resp.get("id")}, {self.__comment_id}, "{body}")'''))
+                                            inserted_reply = conn.execute(text('''SELECT blog_comment_replies.id, blog_comment_replies.reply_body, blog_comment_replies.user_id, blog_users.user_name FROM blog_comment_replies LEFT JOIN blog_users ON blog_comment_replies.user_id = blog_users.id WHERE blog_comment_replies.id = LAST_INSERT_ID()''')).mappings().first()
                                             
-                                            return res(jsonify({"message": "Reply Added", "access_token": self.__resp.get("token")}), 201)
+                                            return res(jsonify({"message": "Reply Added", "access_token": self.__resp.get("token"), "reply": dict(inserted_reply)}), 201)
 
                                         if action == "update":
                                             conn.execute(text(f'''UPDATE blog_comment_replies SET reply_body = "{body}" WHERE id = {self.__reply_id}'''))

@@ -38,7 +38,7 @@ def check_token(func):
                     # Below methods only works on some operating system where decode it done manually
                     # access_token = encode({"id": id, "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY")).decode("utf-8")
                     
-                    access_token = encode({"id": id, "exp": datetime.utcnow() + timedelta(seconds=30)}, getenv("SECRET_KEY"), algorithm="HS256")
+                    access_token = encode({"id": id, "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY"), algorithm="HS256")
                     # print(access_token)
                     decodeResp = decode(access_token, getenv("SECRET_KEY"), algorithms=["HS256"])
                     if decodeResp:
