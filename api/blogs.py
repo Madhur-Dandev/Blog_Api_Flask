@@ -58,7 +58,44 @@ def get_blog(blog_id):
     except (Exception, exc.SQLAlchemyError) as e:
         print(e)
         return res(jsonify({"message": "Server Error"}), 500)
-
+    
+@blogs.get("/getuserstats/<string:token>/<int:blog_id>")
+@check_token
+def get_user_stats(token, resp, blog_id):
+    print(resp)
+    # if resp.get("loggedin"):     
+    #     try:
+    #         with db.connect() as conn:
+    #             result = conn.execute(text(f'''SELECT like_stat, dislike_stat FROM user_blog_stats WHERE user_id = {resp.get("id")} AND blog_id = {blog_id}''')).mappings().first()
+    #             result = dict(result)
+    #             print("hi")
+    #             result["access_token"] = resp.get("token")
+                
+    #             return res(jsonify(result), 200)
+                
+    #     except (Exception, exc.SQLAlchemyError) as e:
+    #         print(e)
+    #         return res(jsonify({"message": "Server Error"}), 500)
+    # else:
+    #     return res(jsonify({"message": "Please Login First"}), 401)
+    
+    if resp.get("loggedin"):
+        try:
+            with db.connect() as conn:
+                result = conn.execute(text(f'''SELECT like_stat, dislike_stat FROM user_blog_stats WHERE user_id = {resp.get("id")} AND blog_id = {blog_id}''')).mappings().first()
+                data = {}
+                if result:
+                    data = dict(result)
+                else:
+                    data["dislike_stat"] = 0
+                    data["like_stat"] = 0
+                data["access_token"] = resp.get("token")
+                return res(jsonify(data), 200)
+        except (Exception, exc.SQLAlchemyError) as e:
+            print(e)
+            return res(jsonify({"message": "Server Error"}), 500)
+    else:
+        return res(jsonify({"message": "Please Login First"}), 401)
 
 @blogs.post("/create/<string:token>")
 @check_token
@@ -133,7 +170,7 @@ def blog_activity(token, resp, blog_id):
                                 conn.execute(text(f'''UPDATE new_blogs SET likes = likes - 1 WHERE id = {current_stat.get("blog_id")}''')).rowcount
 
                                 if update_user_stat:
-                                    return res(jsonify({"message": '''Removed from "Like Blogs"'''}))
+                                    return res(jsonify({"message": '''Removed from "Like Blogs"''', "access_token": resp.get("token")}))
                                 else:
                                     raise UserDefined({"message": "Can't process your request now. Please try again later."})
                             else:
@@ -149,7 +186,7 @@ def blog_activity(token, resp, blog_id):
                             conn.execute(text(f'''INSERT INTO user_blog_stats (user_id, blog_id, {activity}_stat) VALUES ({resp.get("id")}, {blog_id}, TRUE)''')).rowcount
                             conn.execute(text(f'''UPDATE new_blogs SET {activity}s = {activity}s + 1 WHERE id = {blog_id}'''))
 
-                        return res(jsonify({"message": '''Added to "Like Blogs"'''}))
+                        return res(jsonify({"message": '''Added to "Like Blogs"''', "access_token": resp.get("token")}))
                     
                     if activity == "dislike":                    
                         if current_stat:
@@ -160,7 +197,7 @@ def blog_activity(token, resp, blog_id):
                                 conn.execute(text(f'''UPDATE new_blogs SET dislikes = dislikes - 1 WHERE id = {current_stat.get("blog_id")}''')).rowcount
 
                                 if update_user_stat:
-                                    return res(jsonify({"message": '''Dislike Removed.'''}))
+                                    return res(jsonify({"message": '''Dislike Removed.''', "access_token": resp.get("token")}))
                                 else:
                                     raise UserDefined({"message": "Can't process your request now. Please try again later."})
                             else:
@@ -176,7 +213,7 @@ def blog_activity(token, resp, blog_id):
                             conn.execute(text(f'''INSERT INTO user_blog_stats (user_id, blog_id, {activity}_stat) VALUES ({resp.get("id")}, {blog_id}, TRUE)''')).rowcount
                             conn.execute(text(f'''UPDATE new_blogs SET {activity}s = {activity}s + 1 WHERE id = {blog_id}'''))
 
-                        return res(jsonify({"message": '''You have disliked the blog.'''}))
+                        return res(jsonify({"message": '''You have disliked the blog.''', "access_token": resp.get("token")}))
 
                 else:
                     raise UserDefined({"message": "Sorry Blog doesn't exists."})
@@ -306,15 +343,18 @@ def blog_img(folderName, fileName):
     except (FileNotFoundError, FileExistsError, OSError) as e:
         print(e)
         return res(jsonify({"message": "File Does not Exist!"}))
-    
-    
-@blogs.post("/temp/<string:token>")
-def temp(token):
-    print(token)
-    print(req.files)
-    print(req.form)
-    return res(jsonify({"message": "Hi"}), 200)
 
+# @blogs.get("/temp")
+# def temp():
+#     try:
+#         with db.connect() as conn:
+#             conn.execute(text('''INSERT INTO temp_user (name, age) VALUES ("madhur", 12)'''))
+#             result = conn.execute(text('''SELECT * FROM temp_user WHERE id = LAST_INSERT_ID()''')).mappings().first()
+#             print(result)
+#             return res(jsonify({"message": "hi"}), 200)
+#     except Exception as e:
+#         print(e)
+#         return res(jsonify({"message": "error"}), 500)
 
 # SQL Query : 
 # SELECT new_blogs.*, blog_users.user_name, blog_users.id AS user_id, blog_comments.comment_body, bu.id, bu.user_name FROM new_blogs LEFT JOIN blog_users ON new_blogs.user_id = blog_users.id LEFT JOIN blog_comments ON new_blogs.id = blog_comments.blog_id LEFT JOIN blog_users AS bu ON blog_comments.user_id = bu.id WHERE new_blogs.id = 1;

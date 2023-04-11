@@ -42,7 +42,7 @@ def getReplies(comment_id):
         print(e)
         return res(jsonify({"message": "Server Error"}), 500)
 
-@comments.post('/create/<string:token>/<int:blog_id>/')
+@comments.post('/create/<string:token>/<int:blog_id>')
 @check_token
 def create(token, resp, blog_id):
     if resp.get('loggedin'):
@@ -95,3 +95,8 @@ def reply_delete(token, resp, reply_id):
         return resp.exists_action(what="reply", action="delete")
     else:
         return res(jsonify({"message": "Please log in first."}), 401)
+    
+@comments.post("/check/<string:token>/<int:id>")
+def temp(token, id):
+    print(req.json)
+    return res(jsonify({"message": "hi"}), 200)
