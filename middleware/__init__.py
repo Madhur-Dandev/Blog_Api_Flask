@@ -1,7 +1,7 @@
 from functools import wraps
 from database import db
 from sqlalchemy import text, exc
-from jwt import decode, encode, ExpiredSignatureError
+from jwt import decode, encode, ExpiredSignatureError, InvalidTokenError
 from dotenv import load_dotenv
 from os import getenv
 from flask import request as req, make_response as res, jsonify
@@ -27,7 +27,7 @@ def check_token(func):
                 else:
                     resp["loggedin"] = False
 
-        except (Exception, ExpiredSignatureError) as e:
+        except (Exception, ExpiredSignatureError, InvalidTokenError) as e:
             if isinstance(e, ExpiredSignatureError):
                 # print("new token generating...")
                 refresh_token = req.cookies.get("refresh_token")
@@ -62,6 +62,8 @@ def check_token(func):
                         resp["message"] = "Server Error!"
                 else:
                     resp["message"] = "Please Log in first."
+            elif isinstance(e, InvalidTokenError):
+                resp["message"] = "Invalid Token"
             else:
                 print(e)
                 resp["message"] = "Server Error!"

@@ -37,6 +37,37 @@ def index():
         print(e)
         return res(jsonify({"message": "Server Error"}), 500)
     
+def getUserBlogs(user_id):
+    try:
+        page_no = int(req.args.get("p"))
+        with db.connect() as conn:
+            total_results = conn.execute(text(f'''SELECT COUNT(*) AS total_results FROM new_blogs WHERE user_id = {user_id}''')).mappings().first()
+            response_result = {"haveMore": False if 3 * page_no >= total_results.get("total_results") else True }
+            return_results = conn.execute(text(f'''SELECT new_blogs.id, new_blogs.blog_title, new_blogs.blog_image, new_blogs.date_created, blog_users.id AS user_id, blog_users.user_name FROM new_blogs JOIN blog_users ON new_blogs.user_id = blog_users.id WHERE new_blogs.user_id = {user_id} LIMIT 3 OFFSET {(page_no - 1) * 3}''')).mappings().all()
+            converted_result = []
+            for result in return_results:
+                converted_result.append(dict(result))
+            response_result["blogs"] = converted_result
+            return res(jsonify(response_result), 200)
+    except (Exception, exc.SQLAlchemyError) as e:
+        print(e)
+        return res(jsonify({"message": "Server Error"}), 500)
+    
+@blogs.get("/getuserblogs/<int:user_id>")
+def get_user_blogs(user_id):
+    return getUserBlogs(user_id)
+    
+@blogs.get("/getuserblogs/<string:token>")
+@check_token
+def getUserBlogsViaToken(token, resp):
+    if resp.get("loggedin"):
+        resp = getUserBlogs(resp.get("id"))
+        resp["access_token"] = resp.get("token")
+        resp["auth_user"] = True
+        return resp
+    else:
+        return res(jsonify({"message": "Please Login First", "auth_user" : False}), 401)
+    
     
 @blogs.get("/getblog/<int:blog_id>")
 def get_blog(blog_id):
