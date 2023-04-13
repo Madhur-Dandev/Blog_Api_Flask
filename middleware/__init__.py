@@ -18,7 +18,6 @@ def check_token(func):
             with db.connect() as conn:
                 result = conn.execute(text(f'''SELECT COUNT(1) FROM blog_users WHERE token = "{token}"''')).first()
                 # print(req.cookies.get("refresh_token"))
-                print(result, result[0])
                 if result[0] == 1:
                     data = decode(token, getenv("SECRET_KEY"), algorithms=["HS256"])
                     resp["loggedin"] = True
@@ -40,33 +39,35 @@ def check_token(func):
                     
                     access_token = encode({"id": id, "exp": datetime.utcnow() + timedelta(minutes=30)}, getenv("SECRET_KEY"), algorithm="HS256")
                     # print(access_token)
-                    decodeResp = decode(access_token, getenv("SECRET_KEY"), algorithms=["HS256"])
-                    if decodeResp:
+                    # decodeResp = decode(access_token, getenv("SECRET_KEY"), algorithms=["HS256"])
+                    # if decodeResp:
                         # print("new token generated...")
-                        try:
-                            with db.connect() as conn:
-                                conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = "{id}"'''))
-                                # print("new token updated in database...")
-                                resp["loggedin"] = True
-                                resp["id"] = id
-                                resp["token"] = access_token
+                    try:
+                        with db.connect() as conn:
+                            conn.execute(text(f'''UPDATE blog_users SET token = "{access_token}" WHERE id = "{id}"'''))
+                            # print("new token updated in database...")
+                            resp["loggedin"] = True
+                            resp["id"] = id
+                            resp["token"] = access_token
 
-                                    
-                        except exc.SQLAlchemyError as e:
-                            print(e)
-                            return res(jsonify({"message": "Server Error"}), 500)
-                        resp["loggedin"] = True
-                        resp["id"] = decodeResp.get("id")
+                                
+                    except exc.SQLAlchemyError as e:
+                        print(e)
+                        return res(jsonify({"message": "Server Error"}), 500)
+                    # resp["loggedin"] = True
+                    # resp["id"] = decodeResp.get("id")
                     
-                    else:
-                        resp["message"] = "Server Error!"
+                    # else:
+                    #     # resp["message"] = "Server Error!"
+                    #     return res(jsonify({"message": "Server Error"}), 500)
                 else:
                     resp["message"] = "Please Log in first."
             elif isinstance(e, InvalidTokenError):
                 resp["message"] = "Invalid Token"
             else:
                 print(e)
-                resp["message"] = "Server Error!"
+                # resp["message"] = "Server Error!"
+                return res(jsonify({"message": "Server Error"}), 500)
         # print(resp)   
         return func(token, resp, *args, **kwargs)
     return wrapper

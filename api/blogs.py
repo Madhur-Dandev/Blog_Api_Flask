@@ -48,25 +48,38 @@ def getUserBlogs(user_id):
             for result in return_results:
                 converted_result.append(dict(result))
             response_result["blogs"] = converted_result
-            return res(jsonify(response_result), 200)
+            return response_result
     except (Exception, exc.SQLAlchemyError) as e:
         print(e)
-        return res(jsonify({"message": "Server Error"}), 500)
+        return {"message": "Server Error"}
     
 @blogs.get("/getuserblogs/<int:user_id>")
 def get_user_blogs(user_id):
-    return getUserBlogs(user_id)
+    data_receive = getUserBlogs(user_id)
+    if data_receive.get("message"):
+        return res(jsonify(data_receive), 500)
+
+    return res(jsonify(data_receive), 200)
+    # return getUserBlogs(user_id)
     
 @blogs.get("/getuserblogs/<string:token>")
 @check_token
 def getUserBlogsViaToken(token, resp):
+    # print(resp.get("token"))
     if resp.get("loggedin"):
-        resp = getUserBlogs(resp.get("id"))
-        resp["access_token"] = resp.get("token")
-        resp["auth_user"] = True
-        return resp
+        data_receive = getUserBlogs(resp.get("id"))
+        status_code = 0
+        resp_json = data_receive
+        resp_json["access_token"] = resp.get("token")
+        status_code = 200
+        if data_receive.get("message"):
+            status_code = 500
+        print(resp_json)
+        return res(jsonify(resp_json), status_code)
+    elif resp.get("message"):
+        return res(jsonify(resp_json), 401)
     else:
-        return res(jsonify({"message": "Please Login First", "auth_user" : False}), 401)
+        return res(jsonify({"message": "Please Login First"}), 401)
     
     
 @blogs.get("/getblog/<int:blog_id>")
