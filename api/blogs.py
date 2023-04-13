@@ -43,7 +43,7 @@ def getUserBlogs(user_id):
         with db.connect() as conn:
             total_results = conn.execute(text(f'''SELECT COUNT(*) AS total_results FROM new_blogs WHERE user_id = {user_id}''')).mappings().first()
             response_result = {"haveMore": False if 3 * page_no >= total_results.get("total_results") else True }
-            return_results = conn.execute(text(f'''SELECT new_blogs.id, new_blogs.blog_title, new_blogs.blog_image, new_blogs.date_created, blog_users.id AS user_id, blog_users.user_name FROM new_blogs JOIN blog_users ON new_blogs.user_id = blog_users.id WHERE new_blogs.user_id = {user_id} LIMIT 3 OFFSET {(page_no - 1) * 3}''')).mappings().all()
+            return_results = conn.execute(text(f'''SELECT new_blogs.id, new_blogs.blog_title, new_blogs.blog_image, new_blogs.date_created, new_blogs.likes, blog_users.id AS user_id, blog_users.user_name FROM new_blogs JOIN blog_users ON new_blogs.user_id = blog_users.id WHERE new_blogs.user_id = {user_id} LIMIT 3 OFFSET {(page_no - 1) * 3}''')).mappings().all()
             converted_result = []
             for result in return_results:
                 converted_result.append(dict(result))
@@ -53,33 +53,40 @@ def getUserBlogs(user_id):
         print(e)
         return {"message": "Server Error"}
     
-@blogs.get("/getuserblogs/<int:user_id>")
-def get_user_blogs(user_id):
-    data_receive = getUserBlogs(user_id)
-    if data_receive.get("message"):
-        return res(jsonify(data_receive), 500)
+@blogs.get("/getuserblogs/<string:username>")
+def get_user_blogs(username):
+    try:
+        with db.connect() as conn:
+            id = conn.execute(text(f'''SELECT id FROM blog_users WHERE user_name = \"{username}\"''')).mappings().first().get("id")
+        data_receive = getUserBlogs(id)
+        if data_receive.get("message"):
+            return res(jsonify(data_receive), 500)
 
-    return res(jsonify(data_receive), 200)
+        return res(jsonify(data_receive), 200)
+    except (Exception, exc.SQLAlchemyError) as e:
+        print(e)
+        return res(jsonify({"message": "Server"}), 500)
+
     # return getUserBlogs(user_id)
     
-@blogs.get("/getuserblogs/<string:token>")
-@check_token
-def getUserBlogsViaToken(token, resp):
-    # print(resp.get("token"))
-    if resp.get("loggedin"):
-        data_receive = getUserBlogs(resp.get("id"))
-        status_code = 0
-        resp_json = data_receive
-        resp_json["access_token"] = resp.get("token")
-        status_code = 200
-        if data_receive.get("message"):
-            status_code = 500
-        print(resp_json)
-        return res(jsonify(resp_json), status_code)
-    elif resp.get("message"):
-        return res(jsonify(resp_json), 401)
-    else:
-        return res(jsonify({"message": "Please Login First"}), 401)
+# @blogs.get("/getuserblogs/<string:token>")
+# @check_token
+# def getUserBlogsViaToken(token, resp):
+#     # print(resp.get("token"))
+#     if resp.get("loggedin"):
+#         data_receive = getUserBlogs(resp.get("id"))
+#         status_code = 0
+#         resp_json = data_receive
+#         resp_json["access_token"] = resp.get("token")
+#         status_code = 200
+#         if data_receive.get("message"):
+#             status_code = 500
+#         print(resp_json)
+#         return res(jsonify(resp_json), status_code)
+#     elif resp.get("message"):
+#         return res(jsonify(resp_json), 401)
+#     else:
+#         return res(jsonify({"message": "Please Login First"}), 401)
     
     
 @blogs.get("/getblog/<int:blog_id>")
@@ -294,26 +301,26 @@ def delete(token, resp, id):
                             if path.exists(path=path.join(getenv("UPLOAD_FOLDER"), folderName)):
                                 rmtree(path=path.join(getenv("UPLOAD_FOLDER"), folderName))
                                 if path.exists(path=path.join(getenv("UPLOAD_FOLDER"), folderName)):
-                                    return res(jsonify({"message": "Server Error. Please try again."}), 500)
+                                    return res(jsonify({"message": "Server Error. Please try again.", "access_token": resp.get("token")}), 500)
                         except OSError as e:
                             print(e)
-                            return res(jsonify({"message": "Server Error. Please try again."}), 500)
+                            return res(jsonify({"message": "Server Error. Please try again.","access_token": resp.get("token")}), 500)
 
                     delete_res = conn.execute(text(f'''DELETE new_blogs, user_blog_stats, blog_comments, blog_comment_replies FROM new_blogs LEFT JOIN user_blog_stats ON new_blogs.id = user_blog_stats.blog_id LEFT JOIN blog_comments ON new_blogs.id = blog_comments.blog_id LEFT JOIN blog_comment_replies ON new_blogs.id = blog_comment_replies.blog_id WHERE new_blogs.id = {id} AND new_blogs.user_id = {resp.get("id")}''')).rowcount
 
                     if delete_res:
-                        return res(jsonify({"message": "Blog Deleted!"}), 200)
+                        return res(jsonify({"message": "Blog Deleted!", "access_token": resp.get("token")}), 200)
                     else:
-                        raise UserDefined({"message": "Unable to Delete"})
+                        raise UserDefined({"message": "Unable to Delete", "access_token": resp.get("token")})
                 else:
-                    raise UserDefined({"message": "Sorry Blog doesn't exists."})
+                    raise UserDefined({"message": "Sorry Blog doesn't exists.", "access_token": resp.get("token")})
         except (Exception, exc.SQLAlchemyError) as e:
             if isinstance(e, UserDefined):
                 print(e.args[0])
                 return res(jsonify(e.args[0]), 400)
             
             print(e)
-            return res(jsonify({"message": "Server Error"}), 500)
+            return res(jsonify({"message": "Server Error", "access_token": resp.get("token")}), 500)
     else:
         return res(jsonify({"message": "Please Login First"}), 401)
     

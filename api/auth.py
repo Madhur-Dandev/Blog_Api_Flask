@@ -155,36 +155,54 @@ def login():
         return res(jsonify({"message": "Servor Error"}), 500)
 
 
-@auth.get('/logout/<string:token>')
-@check_token
-def logout(token, msg):
-    print(msg)
-    try:
-        if msg.get("loggedin"):
-            with db.connect() as conn:
-                updateRes = conn.execute(text(f'''UPDATE blog_users SET token = "" WHERE id = "{msg.get("id")}"''')).rowcount
-                insertRes = conn.execute(text(f'''INSERT INTO blacklisted_tokens (token) VALUES ("{msg.get("token")}")'''))
+# @auth.get('/logout/<string:token>')
+# @check_token
+# def logout(token, msg):
+#     print(msg)
+#     try:
+#         if msg.get("loggedin"):
+#             with db.connect() as conn:
+#                 updateRes = conn.execute(text(f'''UPDATE blog_users SET token = "" WHERE id = "{msg.get("id")}"''')).rowcount
+#                 insertRes = conn.execute(text(f'''INSERT INTO blacklisted_tokens (token) VALUES ("{msg.get("token")}")'''))
 
-                if updateRes and insertRes:
-                    resp = res(jsonify({"message": "Logout Successfully", "loggedout": True}), 200)
-                    resp.delete_cookie("refresh_token", httponly=True, secure=True, samesite=None)
-                    return resp
-                else:
-                    reUpdateRes = conn.execute(text(f'''UPDATE blog_users SET token = "{msg.get("token")}" WHERE id = "{msg.get('id')}"''')).rowcount
-                    if reUpdateRes:
-                        raise UserDefined("Server Error")
+#                 if updateRes and insertRes:
+#                     resp = res(jsonify({"message": "Logout Successfully", "loggedout": True}), 200)
+#                     resp.delete_cookie("refresh_token", httponly=True, secure=True, samesite=None)
+#                     return resp
+#                 else:
+#                     reUpdateRes = conn.execute(text(f'''UPDATE blog_users SET token = "{msg.get("token")}" WHERE id = "{msg.get('id')}"''')).rowcount
+#                     if reUpdateRes:
+#                         raise UserDefined("Server Error")
+#         else:
+#             return res(jsonify({"message": "Unauthorized"}), 401)
+
+#     except Exception as e:
+#         print(e)
+#         print(e.args[0])
+#         return res(jsonify({"message": "Server Error"}))
+
+@auth.get("/logout")
+def logout():
+    try:
+        token = req.cookies.get("refresh_token")
+        if token:            
+            decoded_data = decode(token, getenv("SECRET_KEY"), algorithms=["HS256"])
+            with db.connect() as conn:
+                conn.execute(text(f'''UPDATE blog_users SET token = "" WHERE id = "{decoded_data.get("id")}"'''))
+                resp = res({"message": "Logout SuccessFully", "loggedout": True}, 200)
+                resp.delete_cookie("refresh_token", httponly=True, secure=True, samesite=None)
+                
+                return resp
         else:
             return res(jsonify({"message": "Unauthorized"}), 401)
-
-    except Exception as e:
+    except (Exception, InvalidTokenError, ExpiredSignatureError) as e:
         print(e)
-        print(e.args[0])
-        return res(jsonify({"message": "Server Error"}))
+        return res(jsonify({"message": "Server Error! Try Again"}), 500)
     
 
-@auth.get("/temp")
-def temp():
-    token = req.cookies.get("refresh_token")
-    print(token)
-    return res(jsonify({"message": "hi"}))
+# @auth.get("/temp/<token>")
+# def temp(token):
+#     token = req.cookies.get("refresh_token")
+#     print(token)
+#     return res(jsonify({"message": "hi"}))
     

@@ -15,26 +15,31 @@ def getProfileData(id):
         print(e)
         return {"message": "Server Error"}
 
-@profile.get("/<string:token>")
-@check_token
-def get_owner_profile(token, resp):
-    if resp.get("loggedin"):
-        data_receive = getProfileData(resp.get("id"))
+@profile.get("/<string:username>")
+def get_profile(username):
+    try:
+        with db.connect() as conn:
+            id = conn.execute(text(f'''SELECT id FROM blog_users WHERE user_name = \"{username}\"''')).mappings().first().get("id")
+        data_receive = getProfileData(id)
         if not data_receive.get("message"):
-            return res(jsonify({"access_token": resp.get("token"), "owner": True, "data": data_receive}), 200)
+            return res(jsonify({"owner": False, "data": data_receive}), 200)
         else:
-            return res(jsonify({"access_token": resp.get("token"), "owner": True, "data": data_receive}), 500)
-    elif resp.get("message"):
-        return res(jsonify(resp), 401)
-    else:
-        return res(jsonify({"message": "Please Login First"}), 401)
+            return res(jsonify({"owner": False, "data": data_receive}), 500)
+    except (Exception, exc.SQLAlchemyError) as e:
+        print(e)
+        return res(jsonify({"message": "Server"}), 500)
 
-@profile.get("/<int:id>")
-def get_profile(id):
-    data_receive = getProfileData(id)
-    if not data_receive.get("message"):
-        return res(jsonify({"owner": False, "data": data_receive}), 200)
-    else:
-        return res(jsonify({"owner": False, "data": data_receive}), 500)
-
+# @profile.get("/<string:token>")
+# @check_token
+# def get_owner_profile(token, resp):
+#     if resp.get("loggedin"):
+#         data_receive = getProfileData(resp.get("id"))
+#         if not data_receive.get("message"):
+#             return res(jsonify({"access_token": resp.get("token"), "owner": True, "data": data_receive}), 200)
+#         else:
+#             return res(jsonify({"access_token": resp.get("token"), "owner": True, "data": data_receive}), 500)
+#     elif resp.get("message"):
+#         return res(jsonify(resp), 401)
+#     else:
+#         return res(jsonify({"message": "Please Login First"}), 401)
     
