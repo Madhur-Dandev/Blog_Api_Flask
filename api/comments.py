@@ -78,7 +78,7 @@ def reply_create(token, resp, comment_id, blog_id):
     else:
         return res(jsonify({"message": "Please log in first."}), 401)
     
-@comments.put("/reply/update/<string:token>/<int:reply_id>/")
+@comments.put("/reply/update/<string:token>/<int:reply_id>")
 @check_token
 def reply_update(token, resp, reply_id):
     if resp.get("loggedin"):

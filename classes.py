@@ -112,8 +112,8 @@ class Comment:
                     exists = conn.execute(text(f'''SELECT * FROM blog_comment_replies WHERE id = {self.__reply_id}''')).mappings().first()
                 
                 if exists:
-                    print(self.__resp.get("id"), exists.get("user_id"))
-                    print(exists)
+                    # print(self.__resp.get("id"), exists.get("user_id"))
+                    # print(exists)
                     # if exists.get("user_id") == self.__resp.get("id"):
                     if self.__resp.get("id"):
                         if action == "delete":
@@ -141,7 +141,7 @@ class Comment:
                                         if action == "update":
                                             conn.execute(text(f'''UPDATE blog_comments SET comment_body = "{body}" WHERE id = {self.__comment_id}'''))
                                     
-                                            return res(jsonify({"message": "Comment Updated!", "access_token": self.__resp.get("token")}), 200)
+                                            return res(jsonify({"message": "Comment Updated!", "access_token": self.__resp.get("token"), "body": body}), 200)
                                     
                                     if what == "reply" or what == "check_comment":
                                         if action == "insert":
@@ -153,20 +153,20 @@ class Comment:
                                         if action == "update":
                                             conn.execute(text(f'''UPDATE blog_comment_replies SET reply_body = "{body}" WHERE id = {self.__reply_id}'''))
                                     
-                                            return res(jsonify({"message": "Reply Updated!", "access_token": self.__resp.get("token")}), 200)
+                                            return res(jsonify({"message": "Reply Updated!", "access_token": self.__resp.get("token"), "body": body}), 200)
 
-                            raise UserDefined({"message": "Data is required and comment body must not be empty!"})
+                            raise UserDefined({"message": "Data is required and comment body must not be empty!", "access_token": self.__resp.get("token")})
                     else:
                         return res(jsonify({"message": "Not Authorized!", "access_token": self.__resp.get("token")}), 401)
                 else:
                     if what == "blog":
-                        raise UserDefined({"message": "Blog not exists!"})
+                        raise UserDefined({"message": "Blog not exists!", "access_token": self.__resp.get("token")})
                     
                     if what == "comment" or what == "check_comment":
-                        raise UserDefined({"message": "Comment not exists!"})
+                        raise UserDefined({"message": "Comment not exists!", "access_token": self.__resp.get("token")})
                     
                     if what == "reply":
-                        raise UserDefined({"message": "Reply not exists!"})
+                        raise UserDefined({"message": "Reply not exists!", "access_token": self.__resp.get("token")})
 
         except (exc.SQLAlchemyError, Exception) as e:
             if isinstance(e, UserDefined):

@@ -151,10 +151,10 @@ def get_user_stats(token, resp, blog_id):
 @blogs.post("/create/<string:token>")
 @check_token
 def create(token, resp):
-    print(req.form)
-    print(req.files)
+    # print(req.form)
+    # print(req.files)
     try:
-        print(resp)
+        # print(resp)
         if resp.get('loggedin'):
             title = req.form.get("title")
             description = req.form.get("description")       
@@ -204,7 +204,7 @@ def create(token, resp):
 @blogs.put('/blog_activity/<string:token>/<blog_id>')
 @check_token
 def blog_activity(token, resp, blog_id):
-    print(token, resp, blog_id)
+    # print(token, resp, blog_id)
     if resp.get("loggedin"):
         activity = req.args.get("activity")
         try:
@@ -214,7 +214,7 @@ def blog_activity(token, resp, blog_id):
                     current_stat = conn.execute(text(f'''SELECT * FROM user_blog_stats WHERE user_id = {resp.get("id")} AND blog_id = {blog_id}''')).mappings().first()
                     if activity == "like":                    
                         if current_stat:
-                            print(current_stat)
+                            # print(current_stat)
                             if current_stat.get("like_stat"):
                                 update_user_stat = conn.execute(text(f'''UPDATE user_blog_stats SET like_stat = FALSE AND dislike_stat = FALSE WHERE id = {current_stat.get("id")}''')).rowcount
 
@@ -241,7 +241,7 @@ def blog_activity(token, resp, blog_id):
                     
                     if activity == "dislike":                    
                         if current_stat:
-                            print(current_stat)
+                            # print(current_stat)
                             if current_stat.get("dislike_stat"):
                                 update_user_stat = conn.execute(text(f'''UPDATE user_blog_stats SET dislike_stat = FALSE AND dislike_stat = FALSE WHERE id = {current_stat.get("id")}''')).rowcount
 
@@ -280,19 +280,24 @@ def blog_activity(token, resp, blog_id):
     else:
         return res(jsonify({"message": "Please Login First"}), 401)
         
-
-
+@blogs.put("/delete/blogimage/<string:token>/<int:id>")
+@check_token
+def del_blog_img(token, resp):
+    if resp.get("loggedin"):
+        pass
+    else:
+        pass
 
 @blogs.delete("/delete/<string:token>/<int:id>")
 @check_token
 def delete(token, resp, id):
-    print(resp)
+    # print(resp)
     if resp.get("loggedin"):
         try:
             with db.connect() as conn:
 
                 blog_exists = conn.execute(text(f'''SELECT * FROM new_blogs WHERE id = {id}''')).mappings().first()
-                print(blog_exists)
+                # print(blog_exists)
 
                 if blog_exists:
                     if blog_exists.get("blog_image"):
