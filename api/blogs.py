@@ -37,6 +37,19 @@ def index():
         print(e)
         return res(jsonify({"message": "Server Error"}), 500)
     
+@blogs.get("/bloglessdetail/<int:id>")
+def temp_get_blog(id):
+    try:
+        with db.connect() as conn:
+            result = conn.execute(text(f"SELECT blog_title, blog_description, blog_image FROM new_blogs WHERE id = {id}")).mappings().first()
+            return res(jsonify(dict(result)), 200)
+            
+            return res(jsonify(result), 200)
+    except (Exception) as e:
+        print(e)
+        return res(jsonify({"message": "Server Error"}), 500)
+        
+    
 def getUserBlogs(user_id):
     try:
         page_no = int(req.args.get("p"))
@@ -151,8 +164,8 @@ def get_user_stats(token, resp, blog_id):
 @blogs.post("/create/<string:token>")
 @check_token
 def create(token, resp):
-    # print(req.form)
-    # print(req.files)
+    print(req.form)
+    print(req.files)
     try:
         # print(resp)
         if resp.get('loggedin'):
@@ -179,11 +192,11 @@ def create(token, resp):
                         if result:    
                             return jsonify({"message": "Blog created successfully!", "access_token": resp.get("token")})
                         else:
-                            raise UserDefined({"message": "Can't process your request now. Try again later."})
+                            raise UserDefined({"message": "Can't process your request now. Try again later.", "access_token": resp.get('token')})
                 else:
-                    raise UserDefined({"message": "Length of description must be 2000 or less."})
+                    raise UserDefined({"message": "Length of description must be 2000 or less.", "access_token": resp.get('token')})
             else:
-                    raise UserDefined({"message": "Length of title must be 500 or less."})    
+                    raise UserDefined({"message": "Length of title must be 500 or less.", "access_token": resp.get('token')})    
             
         else:
             return res(jsonify({"message": "Please log in first."}), 401)
